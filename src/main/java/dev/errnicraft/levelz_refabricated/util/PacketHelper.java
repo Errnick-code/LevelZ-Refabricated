@@ -1,0 +1,114 @@
+package dev.errnicraft.levelz_refabricated.util;
+
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import dev.errnicraft.levelz_refabricated.network.packet.PlayerLevelSyncPacket;
+import net.minecraft.server.MinecraftServer;
+import java.util.UUID;
+import java.util.HashMap;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.ServerLevel;
+import dev.errnicraft.levelz_refabricated.access.LevelManagerAccess;
+import dev.errnicraft.levelz_refabricated.level.*;
+import dev.errnicraft.levelz_refabricated.network.packet.*;
+import dev.errnicraft.levelz_refabricated.registry.EnchantmentRegistry;
+import dev.errnicraft.levelz_refabricated.registry.EnchantmentZ;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+public class PacketHelper {
+
+    public static void updateLevels(ServerPlayer serverPlayerEntity) {
+        LevelManager levelManager = ((LevelManagerAccess) serverPlayerEntity).getLevelManager();
+        int overallLevel = levelManager.getOverallLevel();
+        int skillPoints = levelManager.getSkillPoints();
+        int totalLevelExperience = levelManager.getTotalLevelExperience();
+        float levelProgress = levelManager.getLevelProgress();
+
+        ServerPlayNetworking.send(serverPlayerEntity, new LevelPacket(overallLevel, skillPoints, totalLevelExperience, levelProgress));
+        // Also broadcast updated level map to all players
+        if (serverPlayerEntity.level() instanceof ServerLevel serverLevel && serverLevel.getServer() != null) {
+            broadcastPlayerLevels(serverLevel.getServer());
+        }
+    }
+
+    public static void updateSkills(ServerPlayer serverPlayerEntity) {
+        List<Integer> skillIds = new ArrayList<>();
+        List<String> skillKeys = new ArrayList<>();
+        List<Integer> skillMaxLevels = new ArrayList<>();
+        List<SkillSyncPacket.SkillAttributesRecord> skillAttributes = new ArrayList<>();
+        List<SkillBonus> skillBonuses = new ArrayList<>(LevelManager.BONUSES.values());
+
+        for (Skill skill : LevelManager.SKILLS.values()) {
+            skillIds.add(skill.getId());
+            skillKeys.add(skill.getKey());
+            skillMaxLevels.add(skill.getMaxLevel());
+
+            List<SkillAttribute> skillAttributeList = new ArrayList<>(skill.getAttributes());
+            skillAttributes.add(new SkillSyncPacket.SkillAttributesRecord(skillAttributeList));
+        }
+
+        SkillSyncPacket.SkillBonusesRecord skillBonusesRecord = new SkillSyncPacket.SkillBonusesRecord(skillBonuses);
+        ServerPlayNetworking.send(serverPlayerEntity, new SkillSyncPacket(skillIds, skillKeys, skillMaxLevels, skillAttributes, skillBonusesRecord));
+    }
+
+    public static void updatePlayerSkills(ServerPlayer serverPlayerEntity, @Nullable ServerPlayer oldPlayerEntity) {
+        LevelManager levelManager = ((LevelManagerAccess) serverPlayerEntity).getLevelManager();
+        if (oldPlayerEntity != null) {
+            LevelManager oldLevelManager = ((LevelManagerAccess) oldPlayerEntity).getLevelManager();
+            levelManager.setPlayerSkills(oldLevelManager.getPlayerSkills());
+            levelManager.setOverallLevel(oldLevelManager.getOverallLevel());
+            levelManager.setTotalLevelExperience(oldLevelManager.getTotalLevelExperience());
+            levelManager.setSkillPoints(oldLevelManager.getSkillPoints());
+            levelManager.setLevelProgress(oldLevelManager.getLevelProgress());
+        }
+        List<Integer> playerSkillIds = new ArrayList<>();
+        List<Integer> playerSkillLevels = new ArrayList<>();
+        for (PlayerSkill playerSkill : levelManager.getPlayerSkills().values()) {
+            playerSkillIds.add(playerSkill.getId());
+            playerSkillLevels.add(playerSkill.getLevel());
+        }
+
+        ServerPlayNetworking.send(serverPlayerEntity, new PlayerSkillSyncPacket(playerSkillIds, playerSkillLevels));
+    }
+
+    public static void updateRestrictions(ServerPlayer serverPlayerEntity) {
+        ServerPlayNetworking.send(serverPlayerEntity, new RestrictionPacket(new RestrictionPacket.RestrictionRecord(LevelManager.BLOCK_RESTRICTIONS.keySet().stream().toList(), LevelManager.BLOCK_RESTRICTIONS.values().stream().toList()),
+                new RestrictionPacket.RestrictionRecord(LevelManager.CRAFTING_RESTRICTIONS.keySet().stream().toList(), LevelManager.CRAFTING_RESTRICTIONS.values().stream().toList()),
+                new RestrictionPacket.RestrictionRecord(LevelManager.ENTITY_RESTRICTIONS.keySet().stream().toList(), LevelManager.ENTITY_RESTRICTIONS.values().stream().toList()),
+                new RestrictionPacket.RestrictionRecord(LevelManager.ITEM_RESTRICTIONS.keySet().stream().toList(), LevelManager.ITEM_RESTRICTIONS.values().stream().toList()),
+                new RestrictionPacket.RestrictionRecord(LevelManager.POTION_RESTRICTIONS.keySet().stream().toList(), LevelManager.POTION_RESTRICTIONS.values().stream().toList()),
+                new RestrictionPacket.RestrictionRecord(LevelManager.MINING_RESTRICTIONS.keySet().stream().toList(), LevelManager.MINING_RESTRICTIONS.values().stream().toList()),
+                new RestrictionPacket.RestrictionRecord(LevelManager.ENCHANTMENT_RESTRICTIONS.keySet().stream().toList(), LevelManager.ENCHANTMENT_RESTRICTIONS.values().stream().toList())));
+    }
+
+    public static void syncEnchantments(ServerPlayer serverPlayerEntity) {
+        List<Integer> keys = new ArrayList<>();
+        List<String> ids = new ArrayList<>();
+        List<Integer> levels = new ArrayList<>();
+        for (Map.Entry<Integer, EnchantmentZ> entry : EnchantmentRegistry.ENCHANTMENTS.entrySet()) {
+            keys.add(entry.getKey());
+            ids.add(entry.getValue().getEntry().getRegisteredName());
+            levels.add(entry.getValue().getLevel());
+        }
+        ServerPlayNetworking.send(serverPlayerEntity, new EnchantmentZPacket(EnchantmentRegistry.INDEX_ENCHANTMENTS, keys, ids, levels));
+    }
+
+    /**
+     * Broadcasts all online players' overall levels to every player.
+     * Called whenever any player's level changes or a new player joins.
+     */
+    public static void broadcastPlayerLevels(MinecraftServer server) {
+        Map<UUID, Integer> levelMap = new HashMap<>();
+        for (ServerPlayer p : server.getPlayerList().getPlayers()) {
+            LevelManager lm = ((LevelManagerAccess) p).getLevelManager();
+            levelMap.put(p.getUUID(), lm.getOverallLevel());
+        }
+        PlayerLevelSyncPacket packet = new PlayerLevelSyncPacket(levelMap);
+        for (ServerPlayer p : server.getPlayerList().getPlayers()) {
+            ServerPlayNetworking.send(p, packet);
+        }
+    }
+}
