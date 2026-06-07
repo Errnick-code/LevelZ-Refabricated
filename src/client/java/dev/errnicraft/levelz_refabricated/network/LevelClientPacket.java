@@ -139,6 +139,16 @@ public class LevelClientPacket {
             });
         });
 
+        ClientPlayNetworking.registerGlobalReceiver(ConfigSyncPacket.PACKET_ID, (payload, context) -> {
+            context.client().execute(() -> {
+                dev.errnicraft.levelz_refabricated.init.ConfigInit.CONFIG.xpCostMultiplicator = payload.xpCostMultiplicator();
+                dev.errnicraft.levelz_refabricated.init.ConfigInit.CONFIG.xpExponent = payload.xpExponent();
+                dev.errnicraft.levelz_refabricated.init.ConfigInit.CONFIG.xpBaseCost = payload.xpBaseCost();
+                dev.errnicraft.levelz_refabricated.init.ConfigInit.CONFIG.xpMaxCost = payload.xpMaxCost();
+                dev.errnicraft.levelz_refabricated.init.ConfigInit.CONFIG.overallMaxLevel = payload.overallMaxLevel();
+            });
+        });
+
         ClientPlayNetworking.registerGlobalReceiver(OrbPacket.TYPE, (payload, context) -> {
             context.client().execute(() -> {
                 double x = payload.x();
