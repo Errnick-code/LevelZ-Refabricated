@@ -1,0 +1,15 @@
+{
+  "example_melee_5": {
+    "replace": false,
+    "skills": {
+      "melee": 5
+    },
+    "blocks": [],
+    "crafting": [],
+    "entities": [],
+    "items": [
+      "minecraft:stone_sword"
+    ],
+    "mining": []
+  }
+}

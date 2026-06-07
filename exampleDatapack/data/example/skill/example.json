@@ -1,0 +1,23 @@
+{
+  "constitution": {
+    "replace": true,
+    "id": 0,
+    "key": "constitution",
+    "level": 30,
+    "attributes": [
+      {
+        "id": 0,
+        "type": "generic.max_health",
+        "base": 8,
+        "operation": "ADD_VALUE",
+        "value": 1.5
+      }
+    ],
+    "bonus": [
+      {
+        "level": 10,
+        "key": "healthRegen"
+      }
+    ]
+  }
+}
