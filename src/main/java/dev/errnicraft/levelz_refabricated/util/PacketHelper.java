@@ -13,6 +13,8 @@ import dev.errnicraft.levelz_refabricated.network.packet.*;
 import dev.errnicraft.levelz_refabricated.registry.EnchantmentRegistry;
 import dev.errnicraft.levelz_refabricated.registry.EnchantmentZ;
 import org.jetbrains.annotations.Nullable;
+import dev.errnicraft.levelz_refabricated.init.ConfigInit;
+import dev.errnicraft.levelz_refabricated.network.packet.ConfigSyncPacket;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -110,5 +112,14 @@ public class PacketHelper {
         for (ServerPlayer p : server.getPlayerList().getPlayers()) {
             ServerPlayNetworking.send(p, packet);
         }
+    }
+    public static void syncConfig(ServerPlayer serverPlayerEntity) {
+        ServerPlayNetworking.send(serverPlayerEntity, new ConfigSyncPacket(
+            ConfigInit.CONFIG.xpCostMultiplicator,
+            ConfigInit.CONFIG.xpExponent,
+            ConfigInit.CONFIG.xpBaseCost,
+            ConfigInit.CONFIG.xpMaxCost,
+            ConfigInit.CONFIG.overallMaxLevel
+        ));
     }
 }

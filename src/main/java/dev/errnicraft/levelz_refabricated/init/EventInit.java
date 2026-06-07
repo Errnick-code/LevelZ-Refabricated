@@ -40,6 +40,7 @@ public class EventInit {
             handler.getPlayer().setHealth(handler.getPlayer().getHealth());
 
             PacketHelper.updateLevels(handler.getPlayer());
+            PacketHelper.syncConfig(handler.getPlayer());
 
             PacketHelper.syncEnchantments(handler.getPlayer());
             PacketHelper.updateSkills(handler.getPlayer());

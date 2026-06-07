@@ -13,22 +13,22 @@ public class LevelZRefabricatedConfig implements ConfigData {
     @ConfigEntry.Category("level_settings")
     @ConfigEntry.Gui.RequiresRestart
     @Comment("Maximum level: 0 = disabled")
-    public int overallMaxLevel = 100;
+    public int overallMaxLevel = 220;
     @ConfigEntry.Category("level_settings")
     @Comment("In combination with overallMaxLevel, only when all skills maxed")
     public boolean allowHigherSkillLevel = false;
     @ConfigEntry.Category("level_settings")
     @ConfigEntry.Gui.RequiresRestart
-    public int startPoints = 10;
+    public int startPoints = 1;
     @ConfigEntry.Category("level_settings")
-    public int pointsPerLevel = 3;
+    public int pointsPerLevel = 1;
 
     @ConfigEntry.Category("level_settings")
     @ConfigEntry.BoundedDiscrete(min = 0, max = 100)
     @Comment("Retain % of levels and skill points, 0 = hard mode")
     public float levelRetainPercentage = 100;
     @ConfigEntry.Category("level_settings")
-    public boolean disableMobFarms = false;
+    public boolean disableMobFarms = true;
     @ConfigEntry.Category("level_settings")
     @Comment("Amount of allowed mob kills in a chunk")
     public int mobKillCount = 100;
@@ -131,11 +131,11 @@ public class LevelZRefabricatedConfig implements ConfigData {
     // Experience settings
     @ConfigEntry.Category("experience_settings")
     @Comment("XP equation: lvl^exponent * multiplicator + base")
-    public float xpCostMultiplicator = 0.1F;
+    public float xpCostMultiplicator = 6.2188F;
     @ConfigEntry.Category("experience_settings")
     public int xpExponent = 2;
     @ConfigEntry.Category("experience_settings")
-    public int xpBaseCost = 50;
+    public int xpBaseCost = 80;
     @ConfigEntry.Category("experience_settings")
     @Comment("0 = no experience cap")
     public int xpMaxCost = 0;
@@ -204,7 +204,7 @@ public class LevelZRefabricatedConfig implements ConfigData {
     public boolean restrictions = true;
     @ConfigEntry.Category("progression_settings")
     @ConfigEntry.Gui.RequiresRestart
-    public boolean defaultRestrictions = true;
+    public boolean defaultRestrictions = false;
     @ConfigEntry.Category("progression_settings")
     @ConfigEntry.Gui.RequiresRestart
     @Comment("Remember to name your datapack json differently than default")

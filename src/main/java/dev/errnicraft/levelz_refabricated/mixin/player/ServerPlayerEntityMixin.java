@@ -40,9 +40,14 @@ public abstract class ServerPlayerEntityMixin extends Player implements ServerPl
             levelManager.setTotalLevelExperience(Mth.clamp(levelManager.getTotalLevelExperience() + experience, 0, Integer.MAX_VALUE));
 
             while (levelManager.getLevelProgress() >= 1.0F && !levelManager.isMaxLevel()) {
-                levelManager.setLevelProgress((levelManager.getLevelProgress() - 1.0F) * (float) levelManager.getNextLevelExperience());
+                // Сохраняем стоимость текущего уровня ДО повышения
+                int currentLevelCost = levelManager.getNextLevelExperience();
+                // Переводим остаток прогресса в абсолютный XP относительно текущего уровня
+                float overflowXp = (levelManager.getLevelProgress() - 1.0F) * currentLevelCost;
+                // Повышаем уровень
                 levelManager.addExperienceLevels(1);
-                levelManager.setLevelProgress(levelManager.getLevelProgress() / levelManager.getNextLevelExperience());
+                // Пересчитываем прогресс относительно стоимости НОВОГО уровня
+                levelManager.setLevelProgress(overflowXp / levelManager.getNextLevelExperience());
 
                 PacketHelper.updateLevels(serverPlayerEntity);
                 CriteriaInit.LEVEL_UP.trigger(serverPlayerEntity);
