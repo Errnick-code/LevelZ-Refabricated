@@ -15,7 +15,7 @@ All credit for the original mod goes to **Globox_Z**.
 ## Requirements
 - [Fabric API](https://modrinth.com/mod/fabric-api)
 - [Cloth Config API](https://modrinth.com/mod/cloth-config)
-- [LibZ Refabricated](https://modrinth.com/mod/libz)
+- [LibZ Refabricated](https://modrinth.com/mod/libz-reafabricated)
 
 ## Original mod
 - Modrinth: https://modrinth.com/mod/levelz
