@@ -64,6 +64,9 @@ public class TooltipUtil {
                                 lines.add(Component.translatable("restriction.levelz.usable.tooltip").append(Component.literal(": ")).withStyle(ChatFormatting.GRAY).append(Component.translatable("restriction.levelz." + LevelManager.SKILLS.get(entry.getKey()).getKey() + ".tooltip", entry.getValue()).withStyle(ChatFormatting.RED)));
                             }
                         }
+                        if (playerRestriction.getRequiredOverallLevel() > 0 && (isCreative || levelManager.getOverallLevel() < playerRestriction.getRequiredOverallLevel())) {
+                            lines.add(Component.translatable("restriction.levelz.usable.tooltip").append(Component.literal(": ")).withStyle(ChatFormatting.GRAY).append(Component.translatable("restriction.levelz.overall_level.tooltip", playerRestriction.getRequiredOverallLevel()).withStyle(ChatFormatting.RED)));
+                        }
                     }
                 }
                 if (isCreative || !levelManager.hasRequiredMiningLevel(blockItem.getBlock())) {
@@ -75,6 +78,9 @@ public class TooltipUtil {
                                 lines.add(Component.translatable("restriction.levelz.mineable.tooltip").append(Component.literal(": ")).withStyle(ChatFormatting.GRAY).append(Component.translatable("restriction.levelz." + LevelManager.SKILLS.get(entry.getKey()).getKey() + ".tooltip", entry.getValue()).withStyle(ChatFormatting.RED)));
                                 //lines.add(Text.translatable("restriction.levelz." + LevelManager.SKILLS.get(entry.getKey()).getKey() + ".tooltip", entry.getValue()).formatted(Formatting.RED));
                             }
+                        }
+                        if (playerRestriction.getRequiredOverallLevel() > 0 && (isCreative || levelManager.getOverallLevel() < playerRestriction.getRequiredOverallLevel())) {
+                            lines.add(Component.translatable("restriction.levelz.mineable.tooltip").append(Component.literal(": ")).withStyle(ChatFormatting.GRAY).append(Component.translatable("restriction.levelz.overall_level.tooltip", playerRestriction.getRequiredOverallLevel()).withStyle(ChatFormatting.RED)));
                         }
                     }
                 }
@@ -89,6 +95,9 @@ public class TooltipUtil {
                             lines.add(Component.translatable("restriction.levelz.usable.tooltip").withStyle(ChatFormatting.GRAY).append(Component.literal(": ").withStyle(ChatFormatting.GRAY).append(Component.translatable("restriction.levelz." + LevelManager.SKILLS.get(entry.getKey()).getKey() + ".tooltip", entry.getValue()).withStyle(ChatFormatting.RED))));
                             //lines.add(Text.translatable("restriction.levelz." + LevelManager.SKILLS.get(entry.getKey()).getKey() + ".tooltip", entry.getValue()).formatted(Formatting.RED));
                         }
+                    }
+                    if (playerRestriction.getRequiredOverallLevel() > 0 && (isCreative || levelManager.getOverallLevel() < playerRestriction.getRequiredOverallLevel())) {
+                        lines.add(Component.translatable("restriction.levelz.usable.tooltip").withStyle(ChatFormatting.GRAY).append(Component.literal(": ").withStyle(ChatFormatting.GRAY).append(Component.translatable("restriction.levelz.overall_level.tooltip", playerRestriction.getRequiredOverallLevel()).withStyle(ChatFormatting.RED))));
                     }
                 }
             }
@@ -169,6 +178,9 @@ public class TooltipUtil {
                         if (isCreative || levelManager.getSkillLevel(entry.getKey()) < entry.getValue()) {
                             lines.add(Component.translatable("restriction.levelz.craftable.tooltip").withStyle(ChatFormatting.GRAY).append(Component.literal(": ").withStyle(ChatFormatting.GRAY).append(Component.translatable("restriction.levelz." + LevelManager.SKILLS.get(entry.getKey()).getKey() + ".tooltip", entry.getValue()).withStyle(ChatFormatting.RED))));
                         }
+                    }
+                    if (playerRestriction.getRequiredOverallLevel() > 0 && (isCreative || levelManager.getOverallLevel() < playerRestriction.getRequiredOverallLevel())) {
+                        lines.add(Component.translatable("restriction.levelz.craftable.tooltip").withStyle(ChatFormatting.GRAY).append(Component.literal(": ").withStyle(ChatFormatting.GRAY).append(Component.translatable("restriction.levelz.overall_level.tooltip", playerRestriction.getRequiredOverallLevel()).withStyle(ChatFormatting.RED))));
                     }
                 }
             }

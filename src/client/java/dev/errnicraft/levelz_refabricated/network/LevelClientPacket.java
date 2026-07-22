@@ -146,6 +146,8 @@ public class LevelClientPacket {
                 dev.errnicraft.levelz_refabricated.init.ConfigInit.CONFIG.xpBaseCost = payload.xpBaseCost();
                 dev.errnicraft.levelz_refabricated.init.ConfigInit.CONFIG.xpMaxCost = payload.xpMaxCost();
                 dev.errnicraft.levelz_refabricated.init.ConfigInit.CONFIG.overallMaxLevel = payload.overallMaxLevel();
+                dev.errnicraft.levelz_refabricated.init.ConfigInit.CONFIG.vialMaxCapacity = payload.vialMaxCapacity();
+                dev.errnicraft.levelz_refabricated.init.ConfigInit.CONFIG.vialFillAmount = payload.vialFillAmount();
             });
         });
 
