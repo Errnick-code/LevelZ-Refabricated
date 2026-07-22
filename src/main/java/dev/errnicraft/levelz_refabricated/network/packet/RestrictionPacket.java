@@ -47,6 +47,7 @@ public record RestrictionPacket(RestrictionRecord blockRestrictions,
                     buf.writeInt(entry.getKey());
                     buf.writeInt(entry.getValue());
                 }
+                buf.writeInt(playerRestriction.getRequiredOverallLevel());
             }
         }
 
@@ -67,7 +68,8 @@ public record RestrictionPacket(RestrictionRecord blockRestrictions,
                     int skillLevel = buf.readInt();
                     skillLevelRestrictions.put(skillId, skillLevel);
                 }
-                playerRestrictions.add(new PlayerRestriction(id, skillLevelRestrictions));
+                int requiredOverallLevel = buf.readInt();
+                playerRestrictions.add(new PlayerRestriction(id, skillLevelRestrictions, requiredOverallLevel));
             }
             return new RestrictionRecord(ids, playerRestrictions);
         }

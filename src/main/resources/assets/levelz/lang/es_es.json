@@ -3,19 +3,23 @@
   "commands.level.failed": "Error al establecer las estadísticas de habilidad",
   "commands.level.printProgress": "%s XP: %s / %s",
   "commands.level.printLevel": "%s %s %s",
-
+  "commands.level.printAllHeader": "--- %s ---",
+  "commands.level.printSkillOf": "%s %s: %s / %s",
+  "commands.level.chunk.playerOnly": "Este comando solo puede ser ejecutado por un jugador",
+  "commands.level.chunk.disabled": "La protección contra granjas de mobs está desactivada",
+  "commands.level.chunk.status": "Conteo de bajas en el chunk: %s / %s",
+  "commands.level.chunk.clear": "No hay bajas registradas en este chunk",
+  "commands.level.chunk.noDecay": "El conteo de bajas no se reducirá (decay desactivado en la configuración)",
+  "commands.level.chunk.decayIn": "Próxima reducción en %ss: -%s bajas",
   "category.levelz.keybind": "Teclas de LevelZ",
   "key.levelz.openskillscreen": "Pantalla de Habilidades",
   "key.levelz.dev": "Tecla de Desarrollador",
-
   "text.autoconfig.levelz.title": "Configuración de LevelZ",
-
   "text.autoconfig.levelz.category.gui_settings": "Ajustes de Interfaz",
   "text.autoconfig.levelz.category.default": "Ajustes de Habilidades",
   "text.autoconfig.levelz.category.level_settings": "Ajustes de Nivel",
   "text.autoconfig.levelz.category.experience_settings": "Ajustes de Experiencia",
   "text.autoconfig.levelz.category.progression_settings": "Ajustes de Progresión",
-
   "text.autoconfig.levelz.option.devMode": "Modo Desarrollador",
   "text.autoconfig.levelz.option.hardMode": "Modo Difícil",
   "text.autoconfig.levelz.option.levelRetainPercentage": "Nivel retenido tras la muerte",
@@ -31,7 +35,6 @@
   "text.autoconfig.levelz.option.xpMaxCost": "Coste Máximo de XP",
   "text.autoconfig.levelz.option.lockedHandUsage": "Uso de Mano Bloqueada",
   "text.autoconfig.levelz.option.opStrangePotion": "Poción Extraña Potenciada",
-
   "text.autoconfig.levelz.option.bowDamageBonus": "Bonificación de Daño con Arco",
   "text.autoconfig.levelz.option.bowDoubleDamageChanceBonus": "Bonificación de Probabilidad de Daño Doble con Arco",
   "text.autoconfig.levelz.option.crossbowDamageBonus": "Bonificación de Daño con Ballesta",
@@ -60,7 +63,6 @@
   "text.autoconfig.levelz.option.damageReflectionBonus": "Bonificación de Reflejo de Daño",
   "text.autoconfig.levelz.option.damageReflectionChanceBonus": "Bonificación de Probabilidad de Reflejo de Daño",
   "text.autoconfig.levelz.option.evadingDamageChanceBonus": "Bonificación de Probabilidad de Evasión de Daño",
-
   "text.autoconfig.levelz.option.dropPlayerXP": "Soltar XP del Jugador",
   "text.autoconfig.levelz.option.enableStartPoints": "Puntos de Inicio",
   "text.autoconfig.levelz.option.mobKillCount": "Contador de Mobs Eliminados",
@@ -75,7 +77,6 @@
   "text.autoconfig.levelz.option.tradingXPMultiplier": "Multiplicador de XP por Comercio",
   "text.autoconfig.levelz.option.mobXPMultiplier": "Multiplicador de XP por Mob",
   "text.autoconfig.levelz.option.spawnerMobXP": "XP de Mobs de Generador",
-
   "text.autoconfig.levelz.option.sortCraftingRecipesBySkill": "Ordenar Recetas de Crafteo por Habilidad",
   "text.autoconfig.levelz.option.inventoryButton": "Botón de Inventario",
   "text.autoconfig.levelz.option.inventorySkillLevel": "Nivel en Inventario",
@@ -88,14 +89,11 @@
   "text.autoconfig.levelz.option.showLockedBlockInfo": "Mostrar Información de Bloque Bloqueado",
   "text.autoconfig.levelz.option.lockedBlockInfoPosX": "Posición X de Info de Bloque Bloqueado",
   "text.autoconfig.levelz.option.lockedBlockInfoPosY": "Posición Y de Info de Bloque Bloqueado",
-
   "text.autoconfig.levelz.option.restrictions": "Restricciones",
   "text.autoconfig.levelz.option.defaultRestrictions": "Restricciones Predeterminadas",
   "text.autoconfig.levelz.option.defaultSkills": "Habilidades Predeterminadas",
-
   "item.levelz.strange_potion": "Poción Extraña",
   "item.levelz.rare_candy": "Caramelo Raro",
-
   "skill.levelz.info": "§lInformación de Habilidad",
   "skill.levelz.constitution": "Constitución",
   "skill.levelz.melee": "Cuerpo a Cuerpo",
@@ -109,7 +107,6 @@
   "skill.levelz.cooking": "Cocina",
   "skill.levelz.bartering": "Comercio",
   "skill.levelz.luck": "Suerte",
-
   "skill.levelz.constitution.0": "Constitución aum. la salud máxima",
   "skill.levelz.melee.0": "CC. aum. el daño de ataque",
   "skill.levelz.melee.1": "CC. aum. el retroceso de ataque",
@@ -130,21 +127,17 @@
   "skill.levelz.bartering.0": "Com. reduce el precio de inter.",
   "skill.levelz.bartering.1": "Com. aum. la XP por inter.",
   "skill.levelz.luck.0": "Suerte aumenta el valor del botín",
-
   "restriction.levelz.item_usage": "Uso de Objetos",
   "restriction.levelz.block_usage": "Uso de Bloques",
   "restriction.levelz.entity_usage": "Uso de Entidades",
   "restriction.levelz.enchantments": "Encantamientos",
   "restriction.levelz.mining": "Minería",
   "restriction.levelz.crafting": "Crafteo",
-
   "restriction.levelz.mineable.tooltip": "§7Mineable",
   "restriction.levelz.usable.tooltip": "§7Usable",
   "restriction.levelz.craftable.tooltip": "§7Crafteable",
   "restriction.levelz.locked.tooltip": "Bloqueado",
-
   "item.levelz.locked.tooltip": "Bloqueado",
-
   "restriction.levelz.constitution.tooltip": "Constitución %d",
   "restriction.levelz.melee.tooltip": "Cuerpo a Cuerpo %d",
   "restriction.levelz.defense.tooltip": "Defensa %d",
@@ -157,10 +150,8 @@
   "restriction.levelz.cooking.tooltip": "Cocina %d",
   "restriction.levelz.bartering.tooltip": "Comercio %d",
   "restriction.levelz.luck.tooltip": "Suerte %d",
-
   "block.levelz.locked.tooltip": "§cBloqueado",
   "block.levelz.locked_with_level.tooltip": "Nivel Bloqueado %d",
-
   "text.levelz.gui.title": "Habilidades de %s",
   "text.levelz.gui.attributes": "Atributos",
   "text.levelz.gui.level": "Nivel %d",
@@ -170,9 +161,7 @@
   "text.levelz.gui.level_up": "Subir de Nivel",
   "text.levelz.gui.current_xp": "XP %d / %d",
   "text.levelz.gui.current_level": "%d/%d",
-
   "text.levelz.scoreboard": "Nv. %d %s",
-
   "text.levelz.level": "Nivel %d",
   "text.levelz.info": "Información de Habilidad: %s",
   "text.levelz.general_info": "Habilidades Desbloqueables",
@@ -181,9 +170,7 @@
   "text.levelz.object_info_2": "%s %s",
   "text.levelz.more_info": "Haz clic en los iconos de habilidad para más información",
   "text.levelz.crafting_info": "Lista de Restricciones de Recetas de Crafteo",
-
   "bonus.levelz.info": "§lInformación de Bonificación",
-
   "bonus.levelz.bowDamage.0": "---Daño con Arco",
   "bonus.levelz.bowDoubleDamageChance.0": "Prob. de dañ. dob. con arco %s",
   "bonus.levelz.crossbowDamage.0": "---Daño con Ballesta",
@@ -213,20 +200,20 @@
   "bonus.levelz.damageReflectionChance.0": "Probabilidad de reflejo de daño",
   "bonus.levelz.evadingDamageChance.0": "Prob. de evasión de daño %s",
   "bonus.levelz.meleeCriticalAttackDamage.0": "Daño de golpe crítico CC.",
-
   "config.waila.plugin_levelz": "LevelZ",
   "config.waila.plugin_levelz.mineable_info": "Información de Mineable",
   "config.waila.plugin_levelz.mineable_level_info": "Información de Nivel Mineable",
   "config.jade.plugin_levelz.mineable_info": "Información de Mineable",
-
   "entity.levelz.level_experience_orb": "Orbe de Experiencia",
-
   "screen.levelz.skill_screen": "Habilidades",
-
   "advancements.adventure.level_100.title": "Nivel 100",
   "advancements.adventure.level_100.description": "Alcanza el nivel inalcanzable",
-
   "tag.levelz.restricted_furnace_experience_items": "Objetos de Experiencia en Horno Restringidos",
-
-  "effect.levelz.soul_exhaust": "Agotamiento del Alma"
+  "effect.levelz.soul_exhaust": "Agotamiento del Alma",
+  "text.autoconfig.levelz_refabricated.option.rareCandyGiveExp": "Caramelo Raro: dar EXP en vez de punto",
+  "text.autoconfig.levelz_refabricated.option.rareCandyExpAmount": "Caramelo Raro: cantidad de EXP",
+  "text.autoconfig.levelz_refabricated.option.rareCandyExpPattern": "Caramelo Raro: patrón de EXP (% = dígito aleatorio)",
+  "text.autoconfig.levelz_refabricated.option.mobKillSeriesSeconds": "Mob Kill Series Window (seconds)",
+  "text.autoconfig.levelz_refabricated.option.mobKillDecaySeconds": "Mob Kill Decay Interval (seconds)",
+  "text.autoconfig.levelz_refabricated.option.mobKillDecayAmount": "Mob Kill Decay Amount"
 }

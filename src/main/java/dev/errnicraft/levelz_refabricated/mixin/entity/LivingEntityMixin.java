@@ -12,15 +12,18 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageTypes;
+import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.gamerules.GameRules;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -100,37 +103,51 @@ public abstract class LivingEntityMixin extends Entity {
         }
     }
 
-    @Inject(method = "dropAllDeathLoot", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "dropAllDeathLoot", at = @At("HEAD"))
     protected void dropMixin(ServerLevel world, DamageSource damageSource, CallbackInfo info) {
-        if (!((Object) this instanceof Player) && this.lastHurtByPlayerMemoryTime > 0 && ConfigInit.CONFIG.disableMobFarms) {
-            Player attacker = this.getLastHurtByPlayer();
-            if (attacker != null && !((PlayerDropAccess) attacker).allowMobDrop()) {
-                info.cancel();
-            }
-        }
-    }
-
-    @Inject(
-            method = "die",
-            at = @At(
-                    value = "INVOKE",
-                    target = "Lnet/minecraft/world/entity/LivingEntity;dropAllDeathLoot(Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/damagesource/DamageSource;)V"
-            )
-    )
-    private void onDeathMixin(DamageSource source, CallbackInfo info) {
-        Player attacker = this.getLastHurtByPlayer();
-        if (attacker != null && this.lastHurtByPlayerMemoryTime > 0 && ConfigInit.CONFIG.disableMobFarms) {
+        // Считаем убийство для трекинга чанка только если смерть вызвана непосредственно игроком
+        if (!((Object) this instanceof Player) && ConfigInit.CONFIG.disableMobFarms
+                && damageSource.getEntity() instanceof Player attacker) {
             ((PlayerDropAccess) attacker).increaseKilledMobStat(this.level().getChunk(this.blockPosition()));
         }
     }
 
     @Inject(method = "dropExperience", at = @At("TAIL"))
     protected void dropXpMixin(ServerLevel world, @Nullable Entity attacker, CallbackInfo info) {
+        // Стойки для брони — LivingEntity, но дропать XP не должны
+        if ((Object) this instanceof ArmorStand) {
+            return;
+        }
+
+        // Обработка дропа модового XP с игрока при смерти
+        if ((Object) this instanceof Player playerEntity) {
+            if (((LivingEntity)(Object)this).shouldDropExperience()
+                    && world.getGameRules().get(GameRules.MOB_DROPS)
+                    && ConfigInit.CONFIG.playerDeathXpDrop
+                    && ConfigInit.CONFIG.resetCurrentXp) {
+                LevelManager levelManager = ((LevelManagerAccess) playerEntity).getLevelManager();
+                LevelExperienceOrbEntity.spawn(world, ((LivingEntity)(Object)this).position(),
+                        (int) (levelManager.getLevelProgress() * levelManager.getNextLevelExperience()));
+            }
+            return;
+        }
+
         if (ConfigInit.CONFIG.mobXPMultiplier <= 0.0F) {
             return;
         }
 
         if ((Object) this instanceof Mob mobEntity && !ConfigInit.CONFIG.spawnerMobXP && ((MobEntityAccess) mobEntity).isSpawnerMob()) {
+            return;
+        }
+
+        // XP за моба даём только если убийца - игрок (пилы Create, другие мобы, ловушки и т.п. не считаются)
+        if (!(attacker instanceof Player playerAttacker)) {
+            return;
+        }
+
+        // FIX: защита от ферм мобов — блокируем XP так же, как и дроп предметов
+        if (ConfigInit.CONFIG.disableMobFarms
+                && !((PlayerDropAccess) playerAttacker).allowMobDropInChunk(this.level().getChunk(this.blockPosition()))) {
             return;
         }
 

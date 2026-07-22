@@ -26,6 +26,7 @@ public class LevelZRefabricated implements ModInitializer {
         TagInit.init();
         ItemInit.init();
         RestrictionInit.init();
+        LootInit.init();
         TradeInjector.register();
         LootInjector.register();
     }

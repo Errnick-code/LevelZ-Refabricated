@@ -8,10 +8,16 @@ public class PlayerRestriction {
 
     private final int id;
     private final Map<Integer, Integer> skillLevelRestrictions; // skillid, lvl
+    private final int requiredOverallLevel; // 0 = no overall level requirement
 
     public PlayerRestriction(int id, Map<Integer, Integer> skillLevelRestrictions) {
+        this(id, skillLevelRestrictions, 0);
+    }
+
+    public PlayerRestriction(int id, Map<Integer, Integer> skillLevelRestrictions, int requiredOverallLevel) {
         this.id = id;
         this.skillLevelRestrictions = skillLevelRestrictions;
+        this.requiredOverallLevel = requiredOverallLevel;
     }
 
     public int getId() {
@@ -20,5 +26,9 @@ public class PlayerRestriction {
 
     public Map<Integer, Integer> getSkillLevelRestrictions() {
         return skillLevelRestrictions;
+    }
+
+    public int getRequiredOverallLevel() {
+        return requiredOverallLevel;
     }
 }

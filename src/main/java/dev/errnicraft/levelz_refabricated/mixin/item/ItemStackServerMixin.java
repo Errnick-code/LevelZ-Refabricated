@@ -93,6 +93,11 @@ public class ItemStackServerMixin {
             if (user instanceof ServerPlayer player) {
                 LevelManager levelManager = ((LevelManagerAccess) player).getLevelManager();
 
+                if (!levelManager.hasRequiredItemLevel(stack.getItem())) {
+                    player.displayClientMessage(Component.translatable("text.levelz.restriction", Component.translatable(stack.getItemName().getString())).withStyle(ChatFormatting.RED), true);
+                    cir.setReturnValue(InteractionResult.FAIL);
+                    return;
+                }
 
                 if (!levelManager.hasRequiredPotionLevel(stack)) {
                     player.displayClientMessage(Component.translatable("text.levelz.restriction", Component.translatable(stack.getItemName().getString())).withStyle(ChatFormatting.RED), true);

@@ -25,12 +25,63 @@ public class RareCandyItem extends Item {
         super(settings);
     }
 
+    /**
+     * Resolves the exp amount from a pattern string.
+     * Each '%' in the pattern is replaced with a random digit 0-9.
+     * Example: "9%%%" → random number like 9347.
+     * If pattern is empty or blank, returns the fallback value.
+     */
+    private static int resolveExpAmount(net.minecraft.util.RandomSource rng, String pattern, int fallback) {
+        if (pattern == null || pattern.isBlank()) return fallback;
+        StringBuilder sb = new StringBuilder();
+        for (char c : pattern.toCharArray()) {
+            if (c == '%') {
+                sb.append(rng.nextInt(10));
+            } else {
+                sb.append(c);
+            }
+        }
+        try {
+            int result = Integer.parseInt(sb.toString());
+            return Math.max(1, result);
+        } catch (NumberFormatException e) {
+            return fallback;
+        }
+    }
+
     @Override
     public ItemStack finishUsingItem(ItemStack stack, Level world, LivingEntity user) {
         if (!world.isClientSide() && user instanceof ServerPlayer player) {
             LevelManager levelManager = ((LevelManagerAccess) player).getLevelManager();
+
+            // Серверный кд: тратим заряд из бакета именно тут — в момент фактического
+            // поедания конфеты (а не на старте анимации, которую можно прервать).
+            LevelManager.RareCandyCooldownResult cooldownResult = levelManager.tryConsumeRareCandyUse();
+
+            if (cooldownResult == LevelManager.RareCandyCooldownResult.BLOCKED) {
+                // Защитный путь: use() уже не должен пускать сюда при пустом бакете,
+                // но если всё же дошло — просто ничего не даём и не тратим предмет.
+                long secondsLeft = levelManager.getRareCandyCooldownRemainingSeconds();
+                player.displayClientMessage(Component.translatable(
+                        "text.levelz.rare_candy.cooldown_active", secondsLeft
+                ).withStyle(ChatFormatting.RED), true);
+                return stack;
+            }
+
             int currentLevel = levelManager.getOverallLevel();
             int maxLevel = ConfigInit.CONFIG.overallMaxLevel;
+
+            // If exp mode is enabled: give configured exp amount and skip point/level logic
+            if (ConfigInit.CONFIG.rareCandyGiveExp) {
+                int expToGive = resolveExpAmount(player.level().getRandom(), ConfigInit.CONFIG.rareCandyExpPattern, ConfigInit.CONFIG.rareCandyExpAmount);
+                ((ServerPlayerSyncAccess) player).addLevelExperience(expToGive);
+                if (!player.isCreative()) {
+                    stack.shrink(1);
+                }
+                player.getFoodData().eat(2, 1.0f);
+                notifyCooldownIfLastUse(player, levelManager, cooldownResult);
+                return stack;
+            }
 
             // 1. Lógica para quem ainda NÃO atingiu o nível máximo (Ganha 1 Nível)
             if (currentLevel < maxLevel) {
@@ -76,14 +127,43 @@ public class RareCandyItem extends Item {
                 stack.shrink(1);
             }
             player.getFoodData().eat(2, 1.0f);
+
+            // Сообщение про кд показываем ТОЛЬКО когда заряд закончился — во всех остальных
+            // случаях (DISABLED/ALLOWED) никаких упоминаний кд не выводим.
+            notifyCooldownIfLastUse(player, levelManager, cooldownResult);
         }
 
         return stack;
     }
 
+    /**
+     * Если это было последнее использование бакета — предупреждает игрока над хотбаром,
+     * через сколько секунд появится новая порция конфет. В остальных случаях ничего не пишет.
+     * Сообщение про достижение лимита приоритетнее сообщений про очки/уровни (показывается
+     * последним, поэтому видно именно его).
+     */
+    private static void notifyCooldownIfLastUse(ServerPlayer player, LevelManager levelManager, LevelManager.RareCandyCooldownResult result) {
+        if (result != LevelManager.RareCandyCooldownResult.ALLOWED_LAST_USE) return;
+        long secondsLeft = ConfigInit.CONFIG.rareCandyCooldownSeconds;
+        player.displayClientMessage(Component.translatable(
+                "text.levelz.rare_candy.cooldown_started", secondsLeft
+        ).withStyle(ChatFormatting.YELLOW), true);
+    }
+
 
     @Override
     public InteractionResult use(Level world, Player user, InteractionHand hand) {
+        if (user instanceof ServerPlayer player) {
+            LevelManager levelManager = ((LevelManagerAccess) player).getLevelManager();
+            if (!levelManager.canEatRareCandyNow()) {
+                // Бакет пуст и кд активен — не начинаем анимацию поедания вообще.
+                long secondsLeft = levelManager.getRareCandyCooldownRemainingSeconds();
+                player.displayClientMessage(Component.translatable(
+                        "text.levelz.rare_candy.cooldown_active", secondsLeft
+                ).withStyle(ChatFormatting.RED), true);
+                return InteractionResult.PASS;
+            }
+        }
         return ItemUtils.startUsingInstantly(world, user, hand);
     }
 

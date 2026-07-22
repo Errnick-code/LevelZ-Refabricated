@@ -10,7 +10,9 @@ public record ConfigSyncPacket(
     int xpExponent,
     int xpBaseCost,
     int xpMaxCost,
-    int overallMaxLevel
+    int overallMaxLevel,
+    int vialMaxCapacity,
+    int vialFillAmount
 ) implements CustomPacketPayload {
 
     public static final CustomPacketPayload.Type<ConfigSyncPacket> PACKET_ID =
@@ -23,8 +25,12 @@ public record ConfigSyncPacket(
             buf.writeInt(value.xpBaseCost());
             buf.writeInt(value.xpMaxCost());
             buf.writeInt(value.overallMaxLevel());
+            buf.writeInt(value.vialMaxCapacity());
+            buf.writeInt(value.vialFillAmount());
         }, buf -> new ConfigSyncPacket(
             buf.readFloat(),
+            buf.readInt(),
+            buf.readInt(),
             buf.readInt(),
             buf.readInt(),
             buf.readInt(),

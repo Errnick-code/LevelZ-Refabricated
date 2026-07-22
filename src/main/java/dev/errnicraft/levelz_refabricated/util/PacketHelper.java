@@ -119,7 +119,9 @@ public class PacketHelper {
             ConfigInit.CONFIG.xpExponent,
             ConfigInit.CONFIG.xpBaseCost,
             ConfigInit.CONFIG.xpMaxCost,
-            ConfigInit.CONFIG.overallMaxLevel
+            ConfigInit.CONFIG.overallMaxLevel,
+            ConfigInit.CONFIG.vialMaxCapacity,
+            ConfigInit.CONFIG.vialFillAmount
         ));
     }
 }

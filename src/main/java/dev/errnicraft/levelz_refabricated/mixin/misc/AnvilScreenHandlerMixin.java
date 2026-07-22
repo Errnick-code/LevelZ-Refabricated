@@ -1,5 +1,6 @@
 package dev.errnicraft.levelz_refabricated.mixin.misc;
 
+import dev.errnicraft.levelz_refabricated.access.LevelManagerAccess;
 import dev.errnicraft.levelz_refabricated.util.BonusHelper;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -81,6 +82,20 @@ public abstract class AnvilScreenHandlerMixin extends ItemCombinerMenu {
         int levelCost = BonusHelper.anvilXpDiscountBonus(this.player, this.cost.get(), isEmpty);
         if (levelCost != this.cost.get()) {
             info.setReturnValue(levelCost);
+        }
+    }
+
+    @Inject(
+            method = "createResult()V",
+            at = @At("TAIL")
+    )
+    private void blockRestrictedAnvilResultMixin(CallbackInfo info) {
+        ItemStack result = this.resultSlots.getItem(0);
+        if (result.isEmpty()) {
+            return;
+        }
+        if (!((LevelManagerAccess) this.player).getLevelManager().hasRequiredCraftingLevel(result.getItem())) {
+            this.resultSlots.setItem(0, ItemStack.EMPTY);
         }
     }
 }

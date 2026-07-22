@@ -209,25 +209,36 @@ public record LevelDataLoader(HolderLookup.Provider wrapperLookup) implements Si
                         LOGGER.info("Processing restriction entry: {} | replace={}", mapKey, replace);
 
                         if (!restrictionJsonObject.has("skills") || !restrictionJsonObject.get("skills").isJsonObject()) {
-                            LOGGER.warn("Restriction {} does not contain a valid skills object.", mapKey);
-                            continue;
-                        }
-
-                        JsonObject skillRestrictions = restrictionJsonObject.getAsJsonObject("skills");
-                        for (String skillKey : skillRestrictions.keySet()) {
-                            if (skillKeyIdMap.containsKey(skillKey)) {
-                                int skillId = skillKeyIdMap.get(skillKey);
-                                int requiredLevel = skillRestrictions.get(skillKey).getAsInt();
-                                skillLevelRestrictions.put(skillId, requiredLevel);
-
-                                LOGGER.info(" - skill '{}' resolved to id={} with requiredLevel={}", skillKey, skillId, requiredLevel);
-                            } else {
-                                LOGGER.warn("Restriction {} contains an unrecognized skill called {}", mapKey, skillKey);
+                            if (!restrictionJsonObject.has("level")) {
+                                LOGGER.warn("Restriction {} does not contain a valid skills object or level.", mapKey);
+                                continue;
                             }
                         }
 
-                        if (skillLevelRestrictions.isEmpty()) {
-                            LOGGER.warn("Restriction {} does not contain any valid skills.", mapKey);
+                        if (restrictionJsonObject.has("skills") && restrictionJsonObject.get("skills").isJsonObject()) {
+                            JsonObject skillRestrictions = restrictionJsonObject.getAsJsonObject("skills");
+                            for (String skillKey : skillRestrictions.keySet()) {
+                                if (skillKeyIdMap.containsKey(skillKey)) {
+                                    int skillId = skillKeyIdMap.get(skillKey);
+                                    int requiredLevel = skillRestrictions.get(skillKey).getAsInt();
+                                    skillLevelRestrictions.put(skillId, requiredLevel);
+
+                                    LOGGER.info(" - skill '{}' resolved to id={} with requiredLevel={}", skillKey, skillId, requiredLevel);
+                                } else {
+                                    LOGGER.warn("Restriction {} contains an unrecognized skill called {}", mapKey, skillKey);
+                                }
+                            }
+                        }
+
+                        // Parse optional "level" field — overall player level requirement
+                        int requiredOverallLevel = 0;
+                        if (restrictionJsonObject.has("level")) {
+                            requiredOverallLevel = restrictionJsonObject.get("level").getAsInt();
+                            LOGGER.info(" - overall level requirement: {}", requiredOverallLevel);
+                        }
+
+                        if (skillLevelRestrictions.isEmpty() && requiredOverallLevel == 0) {
+                            LOGGER.warn("Restriction {} does not contain any valid skills or level requirement.", mapKey);
                             continue;
                         }
 
@@ -246,7 +257,7 @@ public record LevelDataLoader(HolderLookup.Provider wrapperLookup) implements Si
                                     if (replace) {
                                         blockList.add(blockRawId);
                                     }
-                                    LevelManager.BLOCK_RESTRICTIONS.put(blockRawId, new PlayerRestriction(blockRawId, skillLevelRestrictions));
+                                    LevelManager.BLOCK_RESTRICTIONS.put(blockRawId, new PlayerRestriction(blockRawId, skillLevelRestrictions, requiredOverallLevel));
 
                                     LOGGER.info(" - block restriction added: {} -> rawId={}", blockIdentifier, blockRawId);
                                 } else {
@@ -268,7 +279,7 @@ public record LevelDataLoader(HolderLookup.Provider wrapperLookup) implements Si
                                     if (replace) {
                                         craftingList.add(craftingRawId);
                                     }
-                                    LevelManager.CRAFTING_RESTRICTIONS.put(craftingRawId, new PlayerRestriction(craftingRawId, skillLevelRestrictions));
+                                    LevelManager.CRAFTING_RESTRICTIONS.put(craftingRawId, new PlayerRestriction(craftingRawId, skillLevelRestrictions, requiredOverallLevel));
 
                                     LOGGER.info(" - crafting restriction added: {} -> rawId={}", craftingIdentifier, craftingRawId);
                                 } else {
@@ -290,7 +301,7 @@ public record LevelDataLoader(HolderLookup.Provider wrapperLookup) implements Si
                                     if (replace) {
                                         entityList.add(entityRawId);
                                     }
-                                    LevelManager.ENTITY_RESTRICTIONS.put(entityRawId, new PlayerRestriction(entityRawId, skillLevelRestrictions));
+                                    LevelManager.ENTITY_RESTRICTIONS.put(entityRawId, new PlayerRestriction(entityRawId, skillLevelRestrictions, requiredOverallLevel));
 
                                     LOGGER.info(" - entity restriction added: {} -> rawId={}", entityIdentifier, entityRawId);
                                 } else {
@@ -312,7 +323,7 @@ public record LevelDataLoader(HolderLookup.Provider wrapperLookup) implements Si
                                     if (replace) {
                                         itemList.add(itemRawId);
                                     }
-                                    LevelManager.ITEM_RESTRICTIONS.put(itemRawId, new PlayerRestriction(itemRawId, skillLevelRestrictions));
+                                    LevelManager.ITEM_RESTRICTIONS.put(itemRawId, new PlayerRestriction(itemRawId, skillLevelRestrictions, requiredOverallLevel));
 
                                     LOGGER.info(" - item restriction added: {} -> rawId={}", itemIdentifier, itemRawId);
                                 } else {
@@ -337,7 +348,7 @@ public record LevelDataLoader(HolderLookup.Provider wrapperLookup) implements Si
                                     }
 
                                     // IMPORTANTE: Use o mapa POTION_RESTRICTIONS para não misturar com itens
-                                    LevelManager.POTION_RESTRICTIONS.put(itemRawId, new PlayerRestriction(itemRawId, skillLevelRestrictions));
+                                    LevelManager.POTION_RESTRICTIONS.put(itemRawId, new PlayerRestriction(itemRawId, skillLevelRestrictions, requiredOverallLevel));
 
                                     LOGGER.info(" - [SUCCESS] potion restriction added: {} -> rawId={}", itemIdentifier, itemRawId);
                                 } else {
@@ -360,7 +371,7 @@ public record LevelDataLoader(HolderLookup.Provider wrapperLookup) implements Si
                                     if (replace) {
                                         miningList.add(miningRawId);
                                     }
-                                    LevelManager.MINING_RESTRICTIONS.put(miningRawId, new PlayerRestriction(miningRawId, skillLevelRestrictions));
+                                    LevelManager.MINING_RESTRICTIONS.put(miningRawId, new PlayerRestriction(miningRawId, skillLevelRestrictions, requiredOverallLevel));
 
                                     LOGGER.info(" - mining restriction added: {} -> rawId={}", miningIdentifier, miningRawId);
                                 } else {
@@ -385,7 +396,7 @@ public record LevelDataLoader(HolderLookup.Provider wrapperLookup) implements Si
                                     if (replace) {
                                         enchantmentList.add(enchantmentRawId);
                                     }
-                                    LevelManager.ENCHANTMENT_RESTRICTIONS.put(enchantmentRawId, new PlayerRestriction(enchantmentRawId, skillLevelRestrictions));
+                                    LevelManager.ENCHANTMENT_RESTRICTIONS.put(enchantmentRawId, new PlayerRestriction(enchantmentRawId, skillLevelRestrictions, requiredOverallLevel));
 
                                     LOGGER.info(" - enchantment restriction added: {} level={} -> rawId={}", enchantmentIdentifier, level, enchantmentRawId);
                                     for (Map.Entry<Integer, Integer> entry : skillLevelRestrictions.entrySet()) {

@@ -28,13 +28,84 @@ public class LevelZRefabricatedConfig implements ConfigData {
     @Comment("Retain % of levels and skill points, 0 = hard mode")
     public float levelRetainPercentage = 100;
     @ConfigEntry.Category("level_settings")
+    @Comment("Use legacy death penalty system (multiply each skill level by retain%). New system deducts % from XP progress and skill points on level loss.")
+    public boolean legacyDeathPenalty = false;
+    @ConfigEntry.Category("level_settings")
     public boolean disableMobFarms = true;
     @ConfigEntry.Category("level_settings")
-    @Comment("Amount of allowed mob kills in a chunk")
+    @Comment("Amount of allowed mob kills in a chunk before XP/loot stops dropping")
     public int mobKillCount = 100;
+    @ConfigEntry.Category("level_settings")
+    @Comment("Seconds after the last kill before the kill series is considered over and the decay timer starts. E.g. 30 means: if no kill for 30s, decay begins.")
+    public int mobKillSeriesSeconds = 30;
+    @ConfigEntry.Category("level_settings")
+    @Comment("Seconds without a kill in a chunk before the kill counter starts recovering. Set to 0 to disable recovery.")
+    public int mobKillDecaySeconds = 300;
+    @ConfigEntry.Category("level_settings")
+    @Comment("How many kills are recovered per decay cycle (every mobKillDecaySeconds). E.g. 10 means 10 kills are forgiven every 5 minutes.")
+    public int mobKillDecayAmount = 10;
     @ConfigEntry.Category("level_settings")
     @Comment("Strange potion resets all stats instead of one")
     public boolean opStrangePotion = true;
+
+    // Rare Candy settings
+    @ConfigEntry.Category("level_settings")
+    @Comment("If true, Rare Candy gives experience points instead of 1 skill point")
+    public boolean rareCandyGiveExp = false;
+    @ConfigEntry.Category("level_settings")
+    @Comment("Amount of experience given by Rare Candy when rareCandyGiveExp is enabled")
+    public int rareCandyExpAmount = 100;
+    @ConfigEntry.Category("level_settings")
+    @Comment("Pattern for randomized Rare Candy exp amount. Use % as a wildcard digit (0-9). Example: '9%%%' gives 9000-9999. Leave empty to use rareCandyExpAmount instead.")
+    public String rareCandyExpPattern = "";
+
+    @ConfigEntry.Category("level_settings")
+    @Comment("Enable a server-side cooldown limiting how many Rare Candies a player can eat in a time window. This is per-player, not per-item-stack, and persists through relogs/restarts.")
+    public boolean rareCandyCooldownEnabled = false;
+    @ConfigEntry.Category("level_settings")
+    @Comment("How many Rare Candies a player can eat before the cooldown kicks in. Default: 3")
+    public int rareCandyCooldownMaxUses = 3;
+    @ConfigEntry.Category("level_settings")
+    @Comment("Cooldown duration in seconds once the use limit is reached, before a fresh batch of uses is granted. Default: 300 (5 minutes)")
+    public int rareCandyCooldownSeconds = 300;
+
+    // Experience Vial settings
+    @ConfigEntry.Category("level_settings")
+    @Comment("Maximum XP a single Experience Vial can hold")
+    public int vialMaxCapacity = 1000;
+
+    @ConfigEntry.Category("level_settings")
+    @Comment("Amount of XP taken from player and put into vial per Shift+RMB use")
+    public int vialFillAmount = 100;
+
+    @ConfigEntry.Category("level_settings")
+    @Comment("Minimum player level required to fill an Experience Vial (player XP won't go below this level)")
+    public int vialMinLevelToFill = 1;
+
+    @ConfigEntry.Category("level_settings")
+    @Comment("Chance (0-100%) for FILLED Experience Vials to appear in chest loot tables")
+    public float vialLootChance = 15f;
+
+    @ConfigEntry.Category("level_settings")
+    @Comment("Chance (0-100%) for EMPTY Experience Vials to appear in chest loot tables")
+    public float vialLootEmptyChanceLoot = 5f;
+
+    @ConfigEntry.Category("level_settings")
+    @Comment("Chance (0-100%) for FILLED Experience Vials to appear as fishing loot")
+    public float vialFishingChance = 5f;
+
+    @ConfigEntry.Category("level_settings")
+    @Comment("Chance (0-100%) for EMPTY Experience Vials to appear as fishing loot")
+    public float vialFishingEmptyChance = 2f;
+
+    @ConfigEntry.Category("level_settings")
+    @Comment("Minimum random XP stored in vials found in loot (0 = empty vial possible)")
+    public int vialLootMinXp = 0;
+
+    @ConfigEntry.Category("level_settings")
+    @Comment("Maximum random XP stored in vials found in loot")
+    public int vialLootMaxXp = 500;
+
     //@ConfigSync.ClientOnly
     @ConfigEntry.Category("level_settings")
     @Comment("restrict hand usage when item not unlocked")
@@ -164,6 +235,9 @@ public class LevelZRefabricatedConfig implements ConfigData {
     public float mobXPMultiplier = 1.0F;
     @ConfigEntry.Category("experience_settings")
     public boolean spawnerMobXP = false;
+    @ConfigEntry.Category("experience_settings")
+    @Comment("Drop experience from player on death")
+    public boolean playerDeathXpDrop = true;
 
     //@ConfigSync.ClientOnly
     @ConfigEntry.Category("gui_settings")

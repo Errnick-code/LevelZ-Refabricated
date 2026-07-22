@@ -50,6 +50,12 @@ public class LevelManager {
     // FIX: флаг «стартовые поинты уже выдавались» — сохраняется в NBT
     private boolean startPointsGiven = false;
 
+    // Rare Candy server-side cooldown bucket. -1 = ещё не инициализирован (выдаём полный бакет лениво).
+    private int rareCandyUsesRemaining = -1;
+    // Абсолютное время (System.currentTimeMillis()), когда текущий бакет восстановится полностью.
+    // 0 = кд не активен (бакет полный либо ещё не тратился).
+    private long rareCandyCooldownEndTime = 0L;
+
     public LevelManager(Player playerEntity) {
         this.playerEntity = playerEntity;
 
@@ -73,6 +79,16 @@ public class LevelManager {
         this.skillPoints = view.getIntOr("SkillPoints", 0);
         // FIX: читаем флаг из NBT
         this.startPointsGiven = view.getBooleanOr("StartPointsGiven", false);
+        // MIGRATION: старые игроки (до введения флага) уже получали стартовые поинты,
+        // но флаг у них не записан → считаем как "уже выдано" если игрок явно играл
+        if (!this.startPointsGiven && (this.overallLevel > 1 || this.skillPoints > 0)) {
+            this.startPointsGiven = true;
+        }
+
+        // Rare Candy cooldown: -1 в NBT (или отсутствие ключа) означает "бакет ещё не инициализирован",
+        // дефолтное значение -1 здесь и означает именно это (а не "ноль использований").
+        this.rareCandyUsesRemaining = view.getIntOr("RareCandyUsesRemaining", -1);
+        this.rareCandyCooldownEndTime = view.getLongOr("RareCandyCooldownEndTime", 0L);
 
         ValueInput skillsView = view.childOrEmpty("Skills");
         if (skillsView != null) {
@@ -97,6 +113,9 @@ public class LevelManager {
         view.putInt("SkillPoints", this.skillPoints);
         // FIX: пишем флаг в NBT
         view.putBoolean("StartPointsGiven", this.startPointsGiven);
+
+        view.putInt("RareCandyUsesRemaining", this.rareCandyUsesRemaining);
+        view.putLong("RareCandyCooldownEndTime", this.rareCandyCooldownEndTime);
 
         ValueOutput skillsView = view.child("Skills");
         for (Map.Entry<Integer, PlayerSkill> entry : playerSkills.entrySet()) {
@@ -155,8 +174,96 @@ public class LevelManager {
         this.startPointsGiven = startPointsGiven;
     }
 
+    /**
+     * Результат попытки потратить одно использование редкой конфеты из серверного кд-бакета.
+     */
+    public enum RareCandyCooldownResult {
+        /** Кд выключен в конфиге — конфету можно есть без ограничений. */
+        DISABLED,
+        /** Разрешено, бакет ещё не опустошён после этого использования. */
+        ALLOWED,
+        /** Разрешено, и это было последнее использование из бакета — бакет уйдёт в кд. */
+        ALLOWED_LAST_USE,
+        /** Запрещено — бакет пуст, кд ещё не истёк. */
+        BLOCKED,
+    }
+
+    /**
+     * Пытается потратить одно использование редкой конфеты для этого игрока.
+     * Бакет фиксированного размера (rareCandyCooldownMaxUses): пока в нём есть заряды — конфету
+     * можно есть. Когда заряды кончаются, ровно в этот момент стартует таймер на
+     * rareCandyCooldownSeconds секунд, по истечении которого выдаётся полностью новый бакет.
+     * Не зависит от количества предметов в стаке — это общий серверный лимит на игрока.
+     */
+    public RareCandyCooldownResult tryConsumeRareCandyUse() {
+        if (!ConfigInit.CONFIG.rareCandyCooldownEnabled) {
+            return RareCandyCooldownResult.DISABLED;
+        }
+
+        int maxUses = Math.max(1, ConfigInit.CONFIG.rareCandyCooldownMaxUses);
+        long now = System.currentTimeMillis();
+
+        // Ленивая инициализация: первый раз когда кд включается (или новый игрок) — полный бакет.
+        if (this.rareCandyUsesRemaining < 0) {
+            this.rareCandyUsesRemaining = maxUses;
+            this.rareCandyCooldownEndTime = 0L;
+        }
+
+        // Бакет был пуст — проверяем, не истёк ли уже таймер восстановления.
+        if (this.rareCandyUsesRemaining <= 0) {
+            if (now >= this.rareCandyCooldownEndTime) {
+                // Кд истёк — выдаём полностью новый бакет.
+                this.rareCandyUsesRemaining = maxUses;
+                this.rareCandyCooldownEndTime = 0L;
+            } else {
+                // Кд ещё активен — конфету есть нельзя.
+                return RareCandyCooldownResult.BLOCKED;
+            }
+        }
+
+        this.rareCandyUsesRemaining--;
+
+        if (this.rareCandyUsesRemaining <= 0) {
+            // Это был последний заряд бакета — запускаем полный таймер восстановления.
+            this.rareCandyCooldownEndTime = now + ConfigInit.CONFIG.rareCandyCooldownSeconds * 1000L;
+            return RareCandyCooldownResult.ALLOWED_LAST_USE;
+        }
+
+        return RareCandyCooldownResult.ALLOWED;
+    }
+
+    /**
+     * Read-only проверка: можно ли сейчас съесть редкую конфету (не тратит заряд).
+     * Используется чтобы не запускать анимацию поедания, если бакет точно пуст и кд активен.
+     */
+    public boolean canEatRareCandyNow() {
+        if (!ConfigInit.CONFIG.rareCandyCooldownEnabled) return true;
+        if (this.rareCandyUsesRemaining < 0) return true; // бакет ещё не инициализирован — будет полным
+        if (this.rareCandyUsesRemaining > 0) return true;
+        return System.currentTimeMillis() >= this.rareCandyCooldownEndTime;
+    }
+
+    /** Сколько секунд осталось до восстановления полного бакета (0, если кд не активен). */
+    public long getRareCandyCooldownRemainingSeconds() {
+        if (this.rareCandyUsesRemaining > 0) return 0L;
+        long remainingMs = this.rareCandyCooldownEndTime - System.currentTimeMillis();
+        return remainingMs > 0 ? (remainingMs + 999) / 1000 : 0L;
+    }
+
+    /** Сбрасывает кд редкой конфеты для этого игрока (полный новый бакет, кд снят). Для админ-команд. */
+    public void resetRareCandyCooldown() {
+        this.rareCandyUsesRemaining = -1;
+        this.rareCandyCooldownEndTime = 0L;
+    }
+
     public void setSkillLevel(int skillId, int level) {
-        this.playerSkills.get(skillId).setLevel(level);
+        PlayerSkill playerSkill = this.playerSkills.get(skillId);
+        if (playerSkill == null) {
+            playerSkill = new PlayerSkill(skillId, level);
+            this.playerSkills.put(skillId, playerSkill);
+        } else {
+            playerSkill.setLevel(level);
+        }
     }
 
     // Na sua classe de utilitários ou LevelManager
@@ -167,8 +274,8 @@ public class LevelManager {
 
 
     public int getSkillLevel(int skillId) {
-        // Maybe add a containsKey check here
-        return this.playerSkills.get(skillId).getLevel();
+        PlayerSkill playerSkill = this.playerSkills.get(skillId);
+        return playerSkill == null ? 0 : playerSkill.getLevel();
     }
 
     public void addExperienceLevels(int levels) {
@@ -214,6 +321,9 @@ public class LevelManager {
         int itemId = BuiltInRegistries.BLOCK.getId(block);
         if (BLOCK_RESTRICTIONS.containsKey(itemId)) {
             PlayerRestriction playerRestriction = BLOCK_RESTRICTIONS.get(itemId);
+            if (playerRestriction.getRequiredOverallLevel() > 0 && this.getOverallLevel() < playerRestriction.getRequiredOverallLevel()) {
+                return false;
+            }
             for (Map.Entry<Integer, Integer> entry : playerRestriction.getSkillLevelRestrictions().entrySet()) {
                 if (this.getSkillLevel(entry.getKey()) < entry.getValue()) {
                     return false;
@@ -236,6 +346,9 @@ public class LevelManager {
         int itemId = BuiltInRegistries.ITEM.getId(item);
         if (CRAFTING_RESTRICTIONS.containsKey(itemId)) {
             PlayerRestriction playerRestriction = CRAFTING_RESTRICTIONS.get(itemId);
+            if (playerRestriction.getRequiredOverallLevel() > 0 && this.getOverallLevel() < playerRestriction.getRequiredOverallLevel()) {
+                return false;
+            }
             for (Map.Entry<Integer, Integer> entry : playerRestriction.getSkillLevelRestrictions().entrySet()) {
                 if (this.getSkillLevel(entry.getKey()) < entry.getValue()) {
                     return false;
@@ -259,6 +372,9 @@ public class LevelManager {
         int entityId = BuiltInRegistries.ENTITY_TYPE.getId(entityType);
         if (ENTITY_RESTRICTIONS.containsKey(entityId)) {
             PlayerRestriction playerRestriction = ENTITY_RESTRICTIONS.get(entityId);
+            if (playerRestriction.getRequiredOverallLevel() > 0 && this.getOverallLevel() < playerRestriction.getRequiredOverallLevel()) {
+                return false;
+            }
             for (Map.Entry<Integer, Integer> entry : playerRestriction.getSkillLevelRestrictions().entrySet()) {
                 if (this.getSkillLevel(entry.getKey()) < entry.getValue()) {
                     return false;
@@ -282,6 +398,9 @@ public class LevelManager {
         int itemId = BuiltInRegistries.ITEM.getId(item);
         if (ITEM_RESTRICTIONS.containsKey(itemId)) {
             PlayerRestriction playerRestriction = ITEM_RESTRICTIONS.get(itemId);
+            if (playerRestriction.getRequiredOverallLevel() > 0 && this.getOverallLevel() < playerRestriction.getRequiredOverallLevel()) {
+                return false;
+            }
             for (Map.Entry<Integer, Integer> entry : playerRestriction.getSkillLevelRestrictions().entrySet()) {
                 if (this.getSkillLevel(entry.getKey()) < entry.getValue()) {
                     return false;
@@ -320,6 +439,9 @@ public class LevelManager {
         int itemId = BuiltInRegistries.BLOCK.getId(block);
         if (MINING_RESTRICTIONS.containsKey(itemId)) {
             PlayerRestriction playerRestriction = MINING_RESTRICTIONS.get(itemId);
+            if (playerRestriction.getRequiredOverallLevel() > 0 && this.getOverallLevel() < playerRestriction.getRequiredOverallLevel()) {
+                return false;
+            }
             for (Map.Entry<Integer, Integer> entry : playerRestriction.getSkillLevelRestrictions().entrySet()) {
                 if (this.getSkillLevel(entry.getKey()) < entry.getValue()) {
                     return false;

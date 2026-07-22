@@ -22,10 +22,15 @@ public class LevelzMixinPlugin implements IMixinConfigPlugin {
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
+        // trinkets_updated регистрирует себя как "trinkets" через provides в fabric.mod.json,
+        // поэтому isModLoaded("trinkets") = true для обоих вариантов мода.
         if (!FabricLoader.getInstance().isModLoaded("trinkets")
                 && mixinClassName.contains("TrinketItemMixin"))
             return false;
 
+        if (!FabricLoader.getInstance().isModLoaded("artifacts")
+                && mixinClassName.contains("ArtifactsEquipMixin"))
+            return false;
 
         if (mixinClassName.contains("LevelManagerCompatMixin") && !FabricLoader.getInstance().isModLoaded("create") && !FabricLoader.getInstance().isModLoaded("computercraft"))
             return false;
@@ -79,5 +84,4 @@ public class LevelzMixinPlugin implements IMixinConfigPlugin {
     @Override
     public void postApply(String targetClassName, ClassNode targetClass, String mixinClassName, IMixinInfo mixinInfo) {
     }
-
 }

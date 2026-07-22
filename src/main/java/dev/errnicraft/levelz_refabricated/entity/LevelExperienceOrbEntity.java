@@ -74,12 +74,12 @@ public class LevelExperienceOrbEntity extends Entity {
         this.yo = this.getY();
         this.zo = this.getZ();
 
+        boolean colliding = !this.level().noCollision(this.getBoundingBox());
+
         if (this.isEyeInFluid(FluidTags.WATER)) {
-            // Vanilla underwater movement
             Vec3 movement = this.getDeltaMovement();
             this.setDeltaMovement(movement.x * 0.99F, Math.min(movement.y + 5.0E-4F, 0.06F), movement.z * 0.99F);
-        } else {
-            // Use vanilla gravity system instead of manual -0.03
+        } else if (!colliding) {
             this.applyGravity();
         }
 
@@ -90,9 +90,12 @@ public class LevelExperienceOrbEntity extends Entity {
                 (this.random.nextFloat() - this.random.nextFloat()) * 0.2F
             );
         }
-
-        if (!this.level().noCollision(this.getBoundingBox())) {
-            this.moveTowardsClosestSpace(this.getX(), (this.getBoundingBox().minY + this.getBoundingBox().maxY) / 2.0, this.getZ());
+        if (this.target == null && !this.level().isClientSide() && colliding) {
+            boolean nextColliding = !this.level().noCollision(this.getBoundingBox().move(this.getDeltaMovement()));
+            if (nextColliding) {
+                this.moveTowardsClosestSpace(this.getX(), (this.getBoundingBox().minY + this.getBoundingBox().maxY) / 2.0, this.getZ());
+                this.needsSync = true;
+            }
         }
 
         if (this.tickCount % 20 == 1) {
@@ -103,17 +106,23 @@ public class LevelExperienceOrbEntity extends Entity {
         if (this.target != null && (this.target.isSpectator() || this.target.isDeadOrDying())) {
             this.target = null;
         }
+        if (this.target == null || this.target.distanceToSqr(this) > 64.0) {
+            Player nearestPlayer = this.level().getNearestPlayer(this, 8.0);
+            if (nearestPlayer != null && !nearestPlayer.isSpectator() && !nearestPlayer.isDeadOrDying()) {
+                this.target = nearestPlayer;
+            } else {
+                this.target = null;
+            }
+        }
         if (this.target != null) {
             Vec3 delta = new Vec3(
                 this.target.getX() - this.getX(),
                 this.target.getY() + this.target.getEyeHeight() / 2.0 - this.getY(),
                 this.target.getZ() - this.getZ()
             );
-            double lengthSq = delta.lengthSqr();
-            if (lengthSq < 64.0) {
-                double power = 1.0 - Math.sqrt(lengthSq) / 8.0;
-                this.setDeltaMovement(this.getDeltaMovement().add(delta.normalize().scale(power * power * 0.1)));
-            }
+            double length = delta.lengthSqr();
+            double power = 1.0 - Math.sqrt(length) / 8.0;
+            this.setDeltaMovement(this.getDeltaMovement().add(delta.normalize().scale(power * power * 0.1)));
         }
 
         double fallSpeed = this.getDeltaMovement().y;
@@ -144,7 +153,7 @@ public class LevelExperienceOrbEntity extends Entity {
         // Our entity type is not EntityType.EXPERIENCE_ORB, so vanilla skips us.
         // We replicate the same logic here on the orb side.
         if (!this.level().isClientSide() && this.orbAge >= 2) {
-            AABB pickupArea = this.getBoundingBox().inflate(1.0, 0.5, 1.0);
+            AABB pickupArea = this.getBoundingBox().inflate(0.5, 0.0, 0.5);
             List<Player> players = this.level().getEntities(
                 EntityTypeTest.forClass(Player.class),
                 pickupArea,
@@ -169,9 +178,6 @@ public class LevelExperienceOrbEntity extends Entity {
     }
 
     private void expensiveUpdate() {
-        if (this.target == null || this.target.distanceToSqr(this) > 64.0) {
-            this.target = this.level().getNearestPlayer(this, 8.0);
-        }
         if (this.level() instanceof ServerLevel) {
             List<LevelExperienceOrbEntity> list = this.level().getEntities(
                 EntityTypeTest.forClass(LevelExperienceOrbEntity.class),
@@ -277,7 +283,6 @@ public class LevelExperienceOrbEntity extends Entity {
 
         ValueOutput map = view.child("clumpedMap");
         getClumpedMap().forEach((value, count) -> map.putInt(value + "", count));
-        view.putString("clumpedMap", map.toString());
     }
 
     @Override

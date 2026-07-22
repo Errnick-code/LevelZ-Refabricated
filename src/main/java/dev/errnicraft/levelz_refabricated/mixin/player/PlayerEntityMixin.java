@@ -17,6 +17,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.level.storage.ValueInput;
@@ -28,6 +29,8 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.*;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+import java.util.HashMap;
+import java.util.Map;
 
 @Mixin(Player.class)
 public abstract class PlayerEntityMixin extends LivingEntity implements LevelManagerAccess, PlayerDropAccess {
@@ -36,11 +39,11 @@ public abstract class PlayerEntityMixin extends LivingEntity implements LevelMan
     @Unique
     private final LevelManager levelManager = new LevelManager(playerEntity);
 
+    // Long (ChunkPos.toLong) -> [killCount, lastKillTime (ms), decayStartTime (ms)]
+    // decayStartTime = -1 означает что серия ещё идёт (основной таймер не запущен)
+    // Статическая — счётчик общий для всех игроков в чанке, не per-player
     @Unique
-    private int killedMobsInChunk;
-    @Unique
-    @Nullable
-    private ChunkAccess killedMobChunk;
+    private static final Map<Long, long[]> chunkKillData = new HashMap<>();
 
     public PlayerEntityMixin(EntityType<? extends LivingEntity> entityType, Level world) {
         super(entityType, world);
@@ -147,34 +150,129 @@ public abstract class PlayerEntityMixin extends LivingEntity implements LevelMan
 
     @Override
     public void increaseKilledMobStat(ChunkAccess chunk) {
-        if (killedMobChunk != null && killedMobChunk == chunk) {
-            killedMobsInChunk++;
-        } else {
-            killedMobChunk = chunk;
-            killedMobsInChunk = 0;
+        long key = chunk.getPos().toLong();
+        long now = System.currentTimeMillis();
+        // [killCount, lastKillTime, decayStartTime (-1 = серия ещё идёт)]
+        long[] data = chunkKillData.computeIfAbsent(key, k -> new long[]{0L, now, -1L});
+
+        // Не увеличиваем счётчик сверх лимита — 80 убийств = лимит, 81-го не существует
+        int limit = ConfigInit.CONFIG.mobKillCount;
+        if (limit > 0 && data[0] < limit) {
+            data[0]++;
         }
+        data[1] = now; // обновляем время последнего убийства
+        data[2] = -1L; // серия возобновилась — останавливаем основной таймер сброса
     }
 
     @Override
     public void resetKilledMobStat() {
-        killedMobsInChunk = 0;
+        chunkKillData.clear();
     }
 
     @Override
     public boolean allowMobDrop() {
-        return killedMobsInChunk < ConfigInit.CONFIG.mobKillCount;
+        // Вызывается для текущего чанка — нужно найти чанк моба.
+        // allowMobDrop проверяется из LivingEntityMixin, который передаёт chunk через increaseKilledMobStat.
+        // Здесь для совместимости проверяем: есть ли хоть один чанк сверх лимита.
+        // Реальная проверка по конкретному чанку — в allowMobDropInChunk.
+        return true; // базовый метод не используется напрямую
     }
 
+    @Override
+    public boolean allowMobDropInChunk(ChunkAccess chunk) {
+        if (ConfigInit.CONFIG.mobKillCount <= 0) return true;
+        long key = chunk.getPos().toLong();
+        long[] data = chunkKillData.get(key);
+        if (data == null) return true;
+        applyDecay(key, data);
+        if (data[0] <= 0) return true;
+        return data[0] < ConfigInit.CONFIG.mobKillCount;
+    }
 
+    @Unique
+    private void applyDecay(long key, long[] data) {
+        int seriesSeconds = ConfigInit.CONFIG.mobKillSeriesSeconds;
+        int decaySeconds = ConfigInit.CONFIG.mobKillDecaySeconds;
+        int decayAmount = ConfigInit.CONFIG.mobKillDecayAmount;
+        if (decaySeconds <= 0 || decayAmount <= 0) return;
 
-@Override
-protected void dropExperience(ServerLevel serverWorld, @Nullable Entity attacker) {
-    System.out.println("dropExperience chamado: " + this.getType());
-    if (this.shouldDropExperience() && serverWorld.getGameRules().get(GameRules.MOB_DROPS) && ConfigInit.CONFIG.resetCurrentXp) {
-            LevelExperienceOrbEntity.spawn(serverWorld, this.position(), (int) (this.levelManager.getLevelProgress() * this.levelManager.getNextLevelExperience()));
-        System.out.println("orb custom spawnada");
+        long now = System.currentTimeMillis();
+        long seriesMs = seriesSeconds * 1000L;
+        long decayMs = decaySeconds * 1000L;
+
+        if (data[2] == -1L) {
+            // Серия ещё идёт — проверяем не истёк ли таймер серии
+            long sinceLastKill = now - data[1];
+            if (sinceLastKill < seriesMs) {
+                return; // серия ещё активна — ничего не делаем
+            }
+            // Серия закончилась — запускаем основной таймер с момента окончания серии
+            data[2] = data[1] + seriesMs;
         }
-        super.dropExperience(serverWorld,attacker);
+
+        // Считаем сколько циклов сброса прошло с data[2]
+        long elapsed = now - data[2];
+        long cycles = elapsed / decayMs;
+        if (cycles > 0) {
+            data[0] = Math.max(0L, data[0] - cycles * decayAmount);
+            data[2] += cycles * decayMs; // сдвигаем базу
+            if (data[0] <= 0) {
+                chunkKillData.remove(key);
+            }
+        }
     }
 
+    @Override
+    public void tickChunkKillDecay() {
+        if (chunkKillData.isEmpty()) return;
+        // Раз в секунду (20 тиков) прогоняем decay по всем активным чанкам
+        if (((Entity)(Object)this).tickCount % 20 != 0) return;
+        // Копируем ключи чтобы безопасно удалять из map внутри applyDecay
+        for (Long key : new java.util.ArrayList<>(chunkKillData.keySet())) {
+            long[] data = chunkKillData.get(key);
+            if (data != null) applyDecay(key, data);
+        }
+    }
+
+    @Override
+    public long[] getChunkKillStatus(ChunkAccess chunk) {
+        int limit = ConfigInit.CONFIG.mobKillCount;
+        long key = chunk.getPos().toLong();
+        long[] data = chunkKillData.get(key);
+
+        // Нет данных по чанку — килов не было
+        if (data == null) {
+            return new long[]{0L, limit, -1L, 0L};
+        }
+
+        applyDecay(key, data);
+        data = chunkKillData.get(key);
+        if (data == null) {
+            return new long[]{0L, limit, -1L, 0L};
+        }
+
+        int decaySeconds = ConfigInit.CONFIG.mobKillDecaySeconds;
+        int decayAmount = ConfigInit.CONFIG.mobKillDecayAmount;
+        int seriesSeconds = ConfigInit.CONFIG.mobKillSeriesSeconds;
+
+        long secondsUntilNextDecay = -1L;
+        if (decaySeconds > 0 && decayAmount > 0) {
+            long now = System.currentTimeMillis();
+            long seriesMs = seriesSeconds * 1000L;
+            long decayMs = decaySeconds * 1000L;
+
+            if (data[2] == -1L) {
+                // Серия ещё идёт — до старта основного таймера остаётся (seriesMs - прошедшее)
+                long sinceLastKill = now - data[1];
+                long remainingSeries = seriesMs - sinceLastKill;
+                secondsUntilNextDecay = (remainingSeries > 0 ? remainingSeries : 0L) / 1000L + decaySeconds;
+            } else {
+                long elapsed = now - data[2];
+                long remaining = decayMs - (elapsed % decayMs);
+                secondsUntilNextDecay = remaining / 1000L;
+            }
+        }
+
+        return new long[]{data[0], limit, secondsUntilNextDecay, decayAmount};
+    }
 }

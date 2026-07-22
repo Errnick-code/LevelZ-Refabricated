@@ -5,6 +5,7 @@ import dev.errnicraft.levelz_refabricated.access.LevelManagerAccess;
 import dev.errnicraft.levelz_refabricated.access.ServerPlayerSyncAccess;
 import dev.errnicraft.levelz_refabricated.init.CriteriaInit;
 import dev.errnicraft.levelz_refabricated.level.LevelManager;
+import dev.errnicraft.levelz_refabricated.access.PlayerDropAccess;
 import dev.errnicraft.levelz_refabricated.util.PacketHelper;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket;
@@ -67,7 +68,8 @@ public abstract class ServerPlayerEntityMixin extends Player implements ServerPl
             this.syncedLevelExperience = levelManager.getTotalLevelExperience();
             PacketHelper.updateLevels((ServerPlayer) (Object) this);
         }
-
+        // FIX: тикаем восстановление лимита убийств по чанкам
+        ((PlayerDropAccess) this).tickChunkKillDecay();
     }
 
 

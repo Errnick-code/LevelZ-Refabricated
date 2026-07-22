@@ -8,5 +8,11 @@ public interface PlayerDropAccess {
 
     boolean allowMobDrop();
 
+    boolean allowMobDropInChunk(ChunkAccess chunk);
+
     void resetKilledMobStat();
+
+    void tickChunkKillDecay();
+
+    long[] getChunkKillStatus(ChunkAccess chunk);
 }

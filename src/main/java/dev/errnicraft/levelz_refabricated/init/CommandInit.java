@@ -12,6 +12,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket;
 import net.minecraft.server.level.ServerPlayer;
 import dev.errnicraft.levelz_refabricated.access.LevelManagerAccess;
+import dev.errnicraft.levelz_refabricated.access.PlayerDropAccess;
 import dev.errnicraft.levelz_refabricated.access.ServerPlayerSyncAccess;
 import dev.errnicraft.levelz_refabricated.level.LevelManager;
 import dev.errnicraft.levelz_refabricated.level.Skill;
@@ -89,7 +90,47 @@ public class CommandInit {
                     })).then(Commands.literal("experience").executes((commandContext) -> {
                         return executeSkillCommand(commandContext.getSource(), EntityArgument.getPlayers(commandContext, "targets"), "experience", 0, 3);
                     })))));
+
+            // ── /level chunk (доступна любому игроку, без прав администратора) ─
+            dispatcher.register(Commands.literal("level").then(Commands.literal("chunk").executes((commandContext) -> {
+                return executeChunkStatusCommand(commandContext.getSource());
+            })));
         });
+    }
+
+    private static int executeChunkStatusCommand(CommandSourceStack source) {
+        ServerPlayer player;
+        try {
+            player = source.getPlayerOrException();
+        } catch (com.mojang.brigadier.exceptions.CommandSyntaxException e) {
+            source.sendFailure(Component.translatable("commands.level.chunk.playerOnly"));
+            return 0;
+        }
+
+        long[] status = ((PlayerDropAccess) player)
+                .getChunkKillStatus(player.level().getChunk(player.blockPosition()));
+
+        long killCount = status[0];
+        long limit = status[1];
+        long secondsUntilDecay = status[2];
+        long decayAmount = status[3];
+
+        if (limit <= 0) {
+            source.sendSuccess(() -> Component.translatable("commands.level.chunk.disabled"), false);
+            return 1;
+        }
+
+        source.sendSuccess(() -> Component.translatable("commands.level.chunk.status", killCount, limit), false);
+
+        if (killCount <= 0) {
+            source.sendSuccess(() -> Component.translatable("commands.level.chunk.clear"), false);
+        } else if (secondsUntilDecay < 0) {
+            source.sendSuccess(() -> Component.translatable("commands.level.chunk.noDecay"), false);
+        } else {
+            source.sendSuccess(() -> Component.translatable("commands.level.chunk.decayIn", secondsUntilDecay, decayAmount), false);
+        }
+
+        return 1;
     }
 
     // Reference 0:Add, 1:Remove, 2:Set, 3:Print
@@ -123,7 +164,7 @@ public class CommandInit {
                     playerSkillLevel = levelManager.getSkillPoints();
                 } else if (skillKey.equals("level")) {
                     playerSkillLevel = levelManager.getOverallLevel();
-                } else {
+                } else if (!skillKey.equals("all")) {
                     for (Skill overallSkill : LevelManager.SKILLS.values()) {
                         if (overallSkill.getKey().equals(skillKey)) {
                             playerSkillLevel = levelManager.getSkillLevel(overallSkill.getId());
@@ -144,13 +185,19 @@ public class CommandInit {
                     playerSkillLevel = i;
                 } else if (reference == 3) {
                     if (skillKey.equals("all")) {
+                        source.sendSuccess(() -> Component.translatable("commands.level.printAllHeader", serverPlayerEntity.getDisplayName()), true);
+                        source.sendSuccess(() -> Component.translatable("commands.level.printLevel", serverPlayerEntity.getDisplayName(),
+                                "Level:", levelManager.getOverallLevel()), true);
+                        source.sendSuccess(() -> Component.translatable("commands.level.printProgress", serverPlayerEntity.getDisplayName(),
+                                (int) (levelManager.getLevelProgress() * levelManager.getNextLevelExperience()), levelManager.getNextLevelExperience()), true);
+                        source.sendSuccess(() -> Component.translatable("commands.level.printLevel", serverPlayerEntity.getDisplayName(),
+                                "Points:", levelManager.getSkillPoints()), true);
                         for (Skill overallSkill : LevelManager.SKILLS.values()) {
                             final String finalSkill = overallSkill.getKey();
-                            source.sendSuccess(() -> Component.translatable("commands.level.printLevel", serverPlayerEntity.getDisplayName(),
-                                            StringUtils.capitalize(finalSkill) + (finalSkill.equals("level") || finalSkill.equals("points") ? ":" : " Level:"),
-                                            finalSkill.equals("level") ? levelManager.getOverallLevel()
-                                                    : finalSkill.equals("points") ? levelManager.getSkillPoints() : levelManager.getSkillLevel(overallSkill.getId())),
-                                    true);
+                            final int skillLevel = levelManager.getSkillLevel(overallSkill.getId());
+                            final int skillMaxLevel = overallSkill.getMaxLevel();
+                            source.sendSuccess(() -> Component.translatable("commands.level.printSkillOf", serverPlayerEntity.getDisplayName(),
+                                    StringUtils.capitalize(finalSkill) + " Level:", skillLevel, skillMaxLevel), true);
                         }
                     } else {
                         final String finalSkill = skillKey;

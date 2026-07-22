@@ -24,6 +24,20 @@ import net.minecraft.world.item.enchantment.ItemEnchantments;
 public class RestrictionHelper {
 
     private static final boolean isAccessoriesLoaded = FabricLoader.getInstance().isModLoaded("accessories");
+    private static final boolean isTrinketsLoaded = FabricLoader.getInstance().isModLoaded("trinkets");
+    private static final boolean isTravelersBackpackLoaded = FabricLoader.getInstance().isModLoaded("travelersbackpack");
+
+    /**
+     * Слоты инвентаря рюкзака (Traveler's Backpack) — это просто хранилище,
+     * item-ограничение на использование не должно блокировать туда вставку.
+     */
+    private static boolean isBackpackStorageSlot(Slot slot) {
+        if (!isTravelersBackpackLoaded) return false;
+        String className = slot.getClass().getName();
+        return className.equals("com.tiviacz.travelersbackpack.inventory.menu.slot.BackpackSlotItemHandler")
+                || className.equals("com.tiviacz.travelersbackpack.inventory.menu.slot.ToolSlotItemHandler")
+                || className.equals("com.tiviacz.travelersbackpack.inventory.menu.slot.SlotItemHandler");
+    }
 
     private static boolean hasRestrictedEnchantment(LevelManager levelManager, ItemStack stack) {
         ItemEnchantments itemEnchantmentsComponent = EnchantmentHelper.getEnchantmentsForCrafting(stack);
@@ -37,6 +51,18 @@ public class RestrictionHelper {
         return false;
     }
 
+    /**
+     * Проверяет, является ли слот тринкет-слотом (SurvivalTrinketSlot).
+     * Используем проверку по имени класса, так как Trinkets — необязательная зависимость
+     * и недоступен при компиляции.
+     */
+    private static boolean isTrinketSlot(Slot slot) {
+        if (!isTrinketsLoaded) return false;
+        String className = slot.getClass().getName();
+        return className.equals("eu.pb4.trinkets.impl.SurvivalTrinketSlot")
+                || className.startsWith("eu.pb4.trinkets.");
+    }
+
     public static boolean restrictSlotClick(Player playerEntity, ClickType actionType, ItemStack cursorStack, Slot slot, AbstractContainerMenu screenHandler) {
         if (!playerEntity.isCreative()) {
             LevelManager levelManager = ((LevelManagerAccess) playerEntity).getLevelManager();
@@ -47,11 +73,22 @@ public class RestrictionHelper {
                     return !slot.getItem().isEmpty() && !levelManager.hasRequiredCraftingLevel(slot.getItem().getItem()) || !levelManager.hasRequiredPotionLevel(slot.getItem());
                 }
 
-                //Crafting - Quick
+                //Crafting - Quick (верстак 3x3)
                 if (screenHandler instanceof CraftingMenu craftingScreenHandler) {
                     Slot outputSlot = craftingScreenHandler.getResultSlot();
 
                     // Bloqueia só a retirada do resultado, mas não o preview.
+                    if (slot == outputSlot) {
+                        ItemStack stack = slot.getItem();
+                        if (!stack.isEmpty()) {
+                            return !levelManager.hasRequiredCraftingLevel(stack.getItem());
+                        }
+                    }
+                }
+                //Inventory crafting - Quick (сетка 2x2 в инвентаре)
+                if (screenHandler instanceof InventoryMenu inventoryMenu) {
+                    Slot outputSlot = inventoryMenu.getResultSlot();
+
                     if (slot == outputSlot) {
                         ItemStack stack = slot.getItem();
                         if (!stack.isEmpty()) {
@@ -86,7 +123,27 @@ public class RestrictionHelper {
                     }
                 }
 
-                return !slot.getItem().isEmpty() && !levelManager.hasRequiredItemLevel(slot.getItem().getItem());
+                // Shift+клик из инвентаря в слот брони / тринкет-слот:
+                // блокируем только если есть item-ограничение, но НЕ если только crafting-ограничение
+                if (!slot.getItem().isEmpty()) {
+                    ItemStack slotStack = slot.getItem();
+                    boolean isNonNormalSlot = !slot.getClass().equals(Slot.class);
+                    boolean isTrinket = isTrinketSlot(slot);
+                    boolean isEquipSlot = screenHandler instanceof InventoryMenu && isNonNormalSlot;
+
+                    // Слоты рюкзака — просто хранилище, item-блокировка не применяется
+                    if (isBackpackStorageSlot(slot)) {
+                        return false;
+                    }
+
+                    if (isEquipSlot || isTrinket) {
+                        // Слот экипировки/тринкета — проверяем только item-блокировку
+                        return !levelManager.hasRequiredItemLevel(slotStack.getItem());
+                    }
+                    // Обычный слот инвентаря — старая логика
+                    return !levelManager.hasRequiredItemLevel(slotStack.getItem());
+                }
+                return false;
 
 
             }
@@ -99,11 +156,22 @@ public class RestrictionHelper {
                             !levelManager.hasRequiredPotionLevel(targetStack);
                 }
             }
-            //Crafting mouse
+            //Crafting mouse (верстак 3x3)
             if (screenHandler instanceof CraftingMenu craftingScreenHandler) {
                 Slot outputSlot = craftingScreenHandler.getResultSlot();
 
                 // Bloqueia só a retirada do resultado, mas não o preview.
+                if (slot == outputSlot) {
+                    ItemStack stack = slot.getItem();
+                    if (!stack.isEmpty()) {
+                        return !levelManager.hasRequiredCraftingLevel(stack.getItem());
+                    }
+                }
+            }
+            //Inventory crafting mouse (сетка 2x2 в инвентаре)
+            if (screenHandler instanceof InventoryMenu inventoryMenu) {
+                Slot outputSlot = inventoryMenu.getResultSlot();
+
                 if (slot == outputSlot) {
                     ItemStack stack = slot.getItem();
                     if (!stack.isEmpty()) {
@@ -144,19 +212,31 @@ public class RestrictionHelper {
             else if (!cursorStack.isEmpty()) {
                 boolean isNonNormalSlot = !slot.getClass().equals(Slot.class);
 
+                // Слоты рюкзака — просто хранилище, ни item- ни crafting-блокировка не применяется
+                if (isBackpackStorageSlot(slot)) {
+                    return false;
+                }
+
                 if (!levelManager.hasRequiredItemLevel(cursorStack.getItem())) {
                     if (screenHandler instanceof InventoryMenu) {
                         if (isNonNormalSlot) {
                             return true;
                         }
-//                    } else if (isAccessoriesLoaded && screenHandler instanceof AccessoriesMenuBase) {
-//                        if (isNonNormalSlot) {
-//                            return true;
-//                        }
+                    }
+                    // Блокировка тринкет-слотов: проверяем по имени класса,
+                    // чтобы не зависеть от Trinkets при компиляции
+                    if (isTrinketSlot(slot)) {
+                        return true;
                     }
                 }
-                if (!levelManager.hasRequiredCraftingLevel(cursorStack.getItem()) && isNonNormalSlot) {
-                    return true;
+                // crafting restriction НЕ должна блокировать надевание в слоты брони/тринкетов —
+                // только item restriction это контролирует
+                if (!levelManager.hasRequiredCraftingLevel(cursorStack.getItem())) {
+                    boolean isNonEquipSlot = !(screenHandler instanceof InventoryMenu && isNonNormalSlot)
+                            && !isTrinketSlot(slot);
+                    if (isNonEquipSlot && isNonNormalSlot) {
+                        return true;
+                    }
                 }
             }
         }

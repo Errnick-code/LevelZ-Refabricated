@@ -11,6 +11,7 @@
     "block.PlantBlockMixin",
     "compat.LevelManagerCompatMixin",
     "compat.TieredCompatMixin",
+    "compat.TrinketItemMixin",
     "entity.AnimalEntityMixin",
     "entity.EnderDragonEntityMixin",
     "entity.EntityAccessor",
@@ -44,12 +45,14 @@
     "misc.PotionSlotMixin",
     "misc.ProcessItemFactoryMixin",
     "misc.ScreenHandlerMixin",
+    "misc.SmithingTableMixin",
     "network.ServerPlayerInteractionManagerMixin",
     "player.HungerManagerMixin",
     "player.PlayerEntityAccessor",
     "player.PlayerEntityMixin",
     "player.PlayerManagerMixin",
-    "player.ServerPlayerEntityMixin"
+    "player.ServerPlayerEntityMixin",
+    "compat.ArtifactsEquipMixin"
   ],
   "client": [
     "HandledScreenInfoMixin",
