@@ -2,7 +2,7 @@
 
 **Unofficial port of [LevelZ](https://modrinth.com/mod/levelz) by [Globox_Z](https://modrinth.com/user/Globox1997) — ported to Minecraft 1.21.11 with Mojang Mappings (Fabric).**
 
-[Download HERE https://modrinth.com/mod/levelz-refabricated](https://modrinth.com/mod/levelz-refabricated)
+**[Download HERE https://modrinth.com/mod/levelz-refabricated](https://modrinth.com/mod/levelz-refabricated)**
 
 All credit for the original mod goes to **Globox_Z**.
 
